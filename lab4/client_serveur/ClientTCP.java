@@ -1,15 +1,16 @@
-import java.net;
+import java.net.*;
+import java.io.*;
 import java.util.scanner;
 
 public class ClientTCP {
 
 	Socket clientSocket;
+	String ip;
+	int portNumber;
 	public ClientTCP(String ip, int portNumber) {
 
-		openSocket(ip, portNumber);
-		exchangeData();
-		closeSockets();
-
+		this.ip=ip;
+		this.portNumber=portNumber;
 
 	}
 

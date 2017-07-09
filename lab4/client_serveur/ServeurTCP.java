@@ -1,16 +1,14 @@
-import java.net;
+import java.net.*;
+import java.io.*;
 
 public class ServeurTCP {
 
 	Socket connexionSocket;
+	int portNumber;
 	ServerSocket serveur;
 	public ServeurTCP(int portNumber) {
 
-		instantiateServerSocket(portNumber);
-		establishConnexion();
-		String data = "Hello world";
-		exchangeData(data);
-		closeSockets();
+		this.portNumber = portNumber;
 
 	}
 
@@ -29,7 +27,7 @@ public class ServeurTCP {
 
 	}
 
-	public void exchangeData(data) {
+	public void exchangeData(String data) {
 		try {
 			OutputStream out = connexionSocket.getOutputStream();
 			out.write(data.getBytes() );
