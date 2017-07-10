@@ -23,7 +23,7 @@ public class ClientTCP extends TCP{
 
 	public void openSocket(int portNumber) {
 		try {
-			Socket socket = new Socket(serverIP/Name, serverPort);
+			Socket socket = new Socket(this.ip, portNumber);
 		} catch (IOException e) { System.out.println(e); }
 
 	}
