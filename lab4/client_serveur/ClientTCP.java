@@ -2,9 +2,9 @@ import java.net.*;
 import java.io.*;
 import java.util.scanner;
 
-public class ClientTCP {
+public class ClientTCP extends TCP{
 
-	Socket clientSocket;
+	Socket socket;
 	String ip;
 	int portNumber;
 	public ClientTCP(String ip, int portNumber) {
@@ -16,14 +16,14 @@ public class ClientTCP {
 
 	public void closeSockets() {
 		try {
-			clientSocket.close();
+			socket.close();
 		} catch (IOException e) { System.out.println(e); }
 
 	}
 
 	public void openSocket(int portNumber) {
 		try {
-			Socket clientSocket = new Socket(serverIP/Name, serverPort);
+			Socket socket = new Socket(serverIP/Name, serverPort);
 		} catch (IOException e) { System.out.println(e); }
 
 	}
@@ -32,7 +32,7 @@ public class ClientTCP {
 		int MAXLENGTH=256;
 		byte[ ] buff = new byte[MAXLENGTH];
 		try {
-			InputStream in = clientSocket.getInputStream();
+			InputStream in = socket.getInputStream();
 			in.read(buff);
 		} catch (IOException e) {System.out.println(e);}
 

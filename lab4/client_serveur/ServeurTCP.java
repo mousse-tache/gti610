@@ -1,47 +1,38 @@
 import java.net.*;
 import java.io.*;
 
-public class ServeurTCP {
+public class ServeurTCP extends TCP{
 
-	Socket connexionSocket;
-	int portNumber;
+	Socket socket;
 	ServerSocket serveur;
-	public ServeurTCP(int portNumber) {
-
-		this.portNumber = portNumber;
-
-	}
+	int portNumber;
+	public ServeurTCP(int portNumber) {this.portNumber=portNumber;}
 
 	public void closeSockets() {
 		try {
-			connexionSocket.close(); 
+			socket.close(); 
 			serveur.close();
 		} catch (IOException e) { System.out.println(e); }
 
 	}
 
-	public void instantiateServerSocket(int portNumber) {
+	public void openSocket(int portNumber) {
 		try {
 			serveur = new ServerSocket(portNumber);
+		} catch (IOException e) { System.out.println(e); }
+
+		try {
+			socket = serveur.accept();
 		} catch (IOException e) { System.out.println(e); }
 
 	}
 
 	public void exchangeData(String data) {
 		try {
-			OutputStream out = connexionSocket.getOutputStream();
+			OutputStream out = socket.getOutputStream();
 			out.write(data.getBytes() );
 		} catch (IOException e) {System.out.println(e);}
 
 	}
-
-	public void establishConnexion() {
-		try {
-			connexionSocket = serveur.accept();
-		} catch (IOException e) { System.out.println(e); }
-
-	}
-
-
 }
 
