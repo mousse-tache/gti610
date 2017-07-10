@@ -64,11 +64,12 @@ public class UDPReceiver extends Thread {
 	private String DomainName = "none";
 	private String DNSFile = null;
 	private boolean RedirectionSeulement = false;
-	
+
 	private class ClientInfo { //quick container
 		public String client_ip = null;
 		public int client_port = 0;
 	};
+
 	private HashMap<Integer, ClientInfo> Clients = new HashMap<>();
 	
 	private boolean stop = false;
@@ -120,11 +121,12 @@ public class UDPReceiver extends Thread {
 	public void run() {
 		try {
 			DatagramSocket serveur = new DatagramSocket(this.port); // *Creation d'un socket UDP
-		
-			
+
+			int test = 0;
+
 			// *Boucle infinie de recpetion
 			while (!this.stop) {
-				byte[] buff = new byte[0xFF];
+				byte[] buff = new byte[1024];
 				DatagramPacket paquetRecu = new DatagramPacket(buff,buff.length);
 				System.out.println("Serveur DNS  "+serveur.getLocalAddress()+"  en attente sur le port: "+ serveur.getLocalPort());
 
@@ -132,57 +134,132 @@ public class UDPReceiver extends Thread {
 				serveur.receive(paquetRecu);
 				
 				System.out.println("paquet recu du  "+paquetRecu.getAddress()+"  du port: "+ paquetRecu.getPort());
-				
 
-				// *Creation d'un DataInputStream ou ByteArrayInputStream pour
-				// manipuler les bytes du paquet
+				DataInputStream din = new DataInputStream(new ByteArrayInputStream(buff));
 
-				ByteArrayInputStream TabInputStream = new ByteArrayInputStream (paquetRecu.getData());
-				
-				System.out.println(buff.toString());
-				
-				// ****** Dans le cas d'un paquet requete *****
+				// Lecture header
+				char id = din.readChar();
+				char flag = din.readChar();
+				char que = din.readChar();
+				char ans = din.readChar();
+				char auth = din.readChar();
+				char add = din.readChar();
+				System.out.println("Transaction ID: " + String.format("%04x", (int) id));
+				System.out.println("Flags: " + String.format("%04x", (int) flag));
+				System.out.println("Questions: " + String.format("%04x", (int) que));
+				System.out.println("Answers RRs: " + String.format("%04x", (int) ans));
+				System.out.println("Authority RRs: " + String.format("%04x", (int) auth));
+				System.out.println("Additional RRs: " + String.format("%04x", (int) add));
 
-					// *Lecture du Query Domain name, a partir du 13 byte
+				String domainName = "";
+				if( this.Clients.containsKey((int)id) == false )
+				{
+					ClientInfo clientInfo = new ClientInfo();
+					clientInfo.client_ip = paquetRecu.getAddress().getHostAddress();
+					clientInfo.client_port = paquetRecu.getPort();
+					this.Clients.put((int)id, clientInfo);
+				}
 
-					// *Sauvegarde du Query Domain name
-					
-					// *Sauvegarde de l'adresse, du port et de l'identifiant de la requete
 
-					// *Si le mode est redirection seulement
-						// *Rediriger le paquet vers le serveur DNS
-					// *Sinon
-						// *Rechercher l'adresse IP associe au Query Domain name
-						// dans le fichier de correspondance de ce serveur					
+				// Lecture question
+				int recLen = 0;
+				while ((recLen = din.readByte()) > 0) {
+					byte[] record = new byte[recLen];
 
-						// *Si la correspondance n'est pas trouvee
-							// *Rediriger le paquet vers le serveur DNS
-						// *Sinon	
-							// *Creer le paquet de reponse a l'aide du UDPAnswerPaquetCreator
-							// *Placer ce paquet dans le socket
-							// *Envoyer le paquet
-				
-				// ****** Dans le cas d'un paquet reponse *****
-						// *Lecture du Query Domain name, a partir du 13 byte
-						
-						// *Passe par dessus Type et Class
-						
-						// *Passe par dessus les premiers champs du ressource record
-						// pour arriver au ressource data qui contient l'adresse IP associe
-						//  au hostname (dans le fond saut de 16 bytes)
-						
-						// *Capture de ou des adresse(s) IP (ANCOUNT est le nombre
-						// de r�ponses retourn�es)			
-					
-						// *Ajouter la ou les correspondance(s) dans le fichier DNS
-						// si elles ne y sont pas deja
-						
-						// *Faire parvenir le paquet reponse au demandeur original,
-						// ayant emis une requete avec cet identifiant				
-						// *Placer ce paquet dans le socket
-						// *Envoyer le paquet
+					for (int i = 0; i < recLen; i++) {
+						record[i] = din.readByte();
+					}
+
+					System.out.println("Record: " + new String(record, "UTF-8"));
+					domainName += new String(record, "UTF-8");
+				}
+
+				// Lecture Reponse (pas de lecture du rdlength ni du Rdata)
+				char qType = din.readChar();
+				char qClass = din.readChar();
+				char field = din.readChar();
+				char answerType = din.readChar();
+				char answerClass = din.readChar();
+				char answerTtl = din.readChar();
+				din.readChar();
+				System.out.println("Record Type: " + String.format("%04x", (int) qType));
+				System.out.println("Class: " + String.format("%04x", (int) qClass));
+				System.out.println("Field: " + String.format("%04x", (int) field));
+				System.out.println("Type: " + String.format("%04x", (int) answerType));
+				System.out.println("Class: " + String.format("%04x", (int) answerClass));
+				System.out.println("TTL: " + String.format("%04x", (int) answerTtl));
+
+				// Test first bit if 0 or 1
+				if( (flag & 0x8000) != 0x8000 )
+				{
+					System.out.println("Request");
+
+					if( this.RedirectionSeulement )
+					{
+						UDPSender udpSender = new UDPSender(this.SERVER_DNS, this.portRedirect, serveur);
+						udpSender.SendPacketNow(paquetRecu);
+					}
+					else
+					{
+						QueryFinder queryFinder = new QueryFinder(this.DNSFile);
+						List<String> ipList = queryFinder.StartResearch(domainName);
+
+						if( ipList.size() == 0 )
+						{
+							UDPSender udpSender = new UDPSender(this.SERVER_DNS, this.portRedirect, serveur);
+							udpSender.SendPacketNow(paquetRecu);
+						}
+						else
+						{
+							UDPAnswerPacketCreator udpAnswerPacketCreator = UDPAnswerPacketCreator.getInstance();
+							byte[] answerPacket  = udpAnswerPacketCreator.CreateAnswerPacket(buff, ipList);
+							DatagramPacket udpResponse = new DatagramPacket(answerPacket, answerPacket.length);
+							ClientInfo clientInfo = Clients.get((int)id);
+							UDPSender udpSender = new UDPSender(clientInfo.client_ip, clientInfo.client_port, serveur);
+							udpSender.SendPacketNow(udpResponse);
+						}
+					}
+				}
+				else
+				{
+					System.out.println("Response");
+
+					//Lecture rdlenght et rdata
+					char addrLen = din.readChar();
+					System.out.println("Len: " + String.format("%04x", (int) addrLen));
+
+					List<String> ipList = new ArrayList<>();
+					String ip = "";
+					int count = 0;
+					for (int i = 0; i < (((int)addrLen)&(0x00FF)); i++ ) {
+						ip += String.format("%d", (din.readByte() & 0xFF)) + ".";
+						if( count == 2 )
+						{
+							ip += String.format("%d", (din.readByte() & 0xFF));
+							ipList.add(new String(ip));
+							count = -1;
+						}
+						count++;
+					}
+
+					for(int i = 0; i < ipList.size(); i++ ) {
+						System.err.println(ipList.get(i));
+					}
+
+					if( ipList.size() == 1 ) {
+						AnswerRecorder answerRecorder = new AnswerRecorder(this.DNSFile);
+						answerRecorder.StartRecord(domainName, ipList.get(0));
+
+						UDPAnswerPacketCreator udpAnswerPacketCreator = UDPAnswerPacketCreator.getInstance();
+						byte[] answerPacket  = udpAnswerPacketCreator.CreateAnswerPacket(buff, ipList);
+						DatagramPacket udpResponse = new DatagramPacket(answerPacket, answerPacket.length);
+						ClientInfo clientInfo = Clients.get((int)id);
+						UDPSender udpSender = new UDPSender(clientInfo.client_ip, clientInfo.client_port, serveur);
+						udpSender.SendPacketNow(udpResponse);
+					}
+				}
 			}
-//			serveur.close(); //closing server
+			serveur.close(); //closing server
 		} catch (Exception e) {
 			System.err.println("Probl�me � l'ex�cution :");
 			e.printStackTrace(System.err);
