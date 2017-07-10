@@ -16,7 +16,7 @@ public class ServeurTCP extends TCP{
 
 	}
 
-	public void openSocket(int portNumber) {
+	public void openSocket() {
 		try {
 			serveur = new ServerSocket(portNumber);
 		} catch (IOException e) { System.out.println(e); }

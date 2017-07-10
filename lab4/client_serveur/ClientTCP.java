@@ -1,6 +1,6 @@
-import java.net.*;
-import java.io.*;
-import java.util.scanner;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
 
 public class ClientTCP extends TCP{
 
@@ -21,9 +21,9 @@ public class ClientTCP extends TCP{
 
 	}
 
-	public void openSocket(int portNumber) {
+	public void openSocket() {
 		try {
-			Socket socket = new Socket(this.ip, portNumber);
+			Socket socket = new Socket(this.ip , this.portNumber);
 		} catch (IOException e) { System.out.println(e); }
 
 	}
